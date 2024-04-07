@@ -18,7 +18,7 @@ router.get('/', () => {
 })
 
 // users
-router.post('info/user', [UsersController, 'getUserInfo'])
+router.post('info/account', [UsersController, 'getAccountInfo'])
 router.post('sign-up', [UsersController, 'signUp'])
 router.post('login', [UsersController, 'login'])
 router.post('logout', [UsersController, 'logout'])

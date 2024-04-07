@@ -14,7 +14,7 @@ import hash from '@adonisjs/core/services/hash'
 import mail from '@adonisjs/mail/services/main'
 
 export default class UsersController {
-  async getUserInfo({ auth, request, response }: HttpContext) {
+  async getAccountInfo({ auth, request, response }: HttpContext) {
     const authResult = await this.authenticateUser(auth)
     if (!authResult.user) {
       return response
