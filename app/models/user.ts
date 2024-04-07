@@ -2,10 +2,11 @@ import { DateTime } from 'luxon'
 import { withAuthFinder } from '@adonisjs/auth'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { afterDelete, BaseModel, beforeDelete, column } from '@adonisjs/lucid/orm'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 import type { ManyToMany } from '@adonisjs/lucid/types/relations'
 import Project from './project.js'
+import ProjectMember from './project_member.js'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -28,6 +29,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
   @column()
   declare password: string
 
+  @column()
+  declare isModerator: boolean
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
@@ -37,4 +41,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare project_members: ManyToMany<typeof Project>
 
   static accessTokens = DbAccessTokensProvider.forModel(User)
+
+  @beforeDelete()
+  static async deleteMemberTable(user: User) {
+    await Project.query().where('owner_id', user.id).delete()
+  }
 }

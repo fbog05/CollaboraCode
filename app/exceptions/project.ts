@@ -1,16 +1,8 @@
 import { DateTime } from 'luxon'
-import {
-  afterCreate,
-  BaseModel,
-  beforeDelete,
-  column,
-  hasMany,
-  manyToMany,
-} from '@adonisjs/lucid/orm'
+import { BaseModel, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
 import User from './user.js'
 import File from './file.js'
 import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
-import ProjectMember from './project_member.js'
 
 export default class Project extends BaseModel {
   @column({ isPrimary: true })
@@ -20,7 +12,7 @@ export default class Project extends BaseModel {
   declare name: string
 
   @column()
-  declare ownerId: number
+  declare owner_id: number
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -35,18 +27,4 @@ export default class Project extends BaseModel {
     pivotTable: 'project_members',
   })
   declare members: ManyToMany<typeof User>
-
-  @afterCreate()
-  static async createMemberTable(project: Project) {
-    await ProjectMember.create({
-      userId: project.ownerId,
-      projectId: project.id,
-    })
-  }
-
-  @beforeDelete()
-  static async deleteMemberTable(project: Project) {
-    await File.query().where('project_id', project.id).delete()
-    await ProjectMember.query().where('project_id', project.id).delete()
-  }
 }

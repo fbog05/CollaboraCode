@@ -1,11 +1,12 @@
 /* eslint-disable prettier/prettier */
 import RegisterNotification from '#mails/register_notification'
 import User from '#models/user'
-import { loginValidator, registerValidator } from '#validators/user'
+import { loginValidator, modifyAccountValidator, registerValidator } from '#validators/user'
+import { Authenticator } from '@adonisjs/auth'
 import { AccessToken } from '@adonisjs/auth/access_tokens'
+import { Authenticators } from '@adonisjs/auth/types'
 import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
-import mail from '@adonisjs/mail/services/main'
 
 export default class UsersController {
   async getUsers({ response }: HttpContext) {
@@ -13,7 +14,7 @@ export default class UsersController {
     response.status(200).json(users)
   }
 
-  async register({ request, response }: HttpContext) {
+  async signUp({ request, response }: HttpContext) {
     const data = request.all()
     try {
       const payload = await registerValidator.validate(data)
@@ -41,7 +42,7 @@ export default class UsersController {
       </div>
       `)
 
-      await mail.send(email)
+      //await mail.send(email)
 
       response.header('Content-type', 'application/json')
       const token = await User.accessTokens.create(user)
@@ -55,7 +56,6 @@ export default class UsersController {
     const { email, password } = request.only(['email', 'password'])
 
     try {
-      response.header('Content-type', 'application/json')
       await loginValidator.validate({ email, password })
 
       const user = await User.findBy('email', email)
@@ -90,45 +90,27 @@ export default class UsersController {
   }
 
   async verify({ auth, response }: HttpContext) {
-    let user
-    try {
-      user = await auth.authenticate()
-      if (!user) {
-        return response.status(401).send({ message: 'Nem érvényes token' })
-      }
-    } catch (error) {
-      if (error.code === 'E_UNAUTHORIZED_ACCESS') {
-        return response.status(401).send({ message: 'Nem érvényes token' })
-      } else {
-        return response.status(error.status).send(error)
-      }
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response.status(authResult.error.status).send(authResult.error.message)
     }
-
+    
     return response
       .status(200)
       .json(
-        `A felhasználó bejelentkezve marad (UTC): ${user.currentAccessToken.expiresAt?.toLocaleString()}-ig`
+        `A felhasználó bejelentkezve marad (UTC): ${authResult.user.currentAccessToken.expiresAt?.toLocaleString()}-ig`
       )
   }
 
   async renewToken({ auth, response }: HttpContext) {
-     let user
-     try {
-       user = await auth.authenticate()
-       if (!user) {
-         return response.status(401).send({ message: 'Nem érvényes token' })
-       }
-     } catch (error) {
-       if (error.code === 'E_UNAUTHORIZED_ACCESS') {
-         return response.status(401).send({ message: 'Nem érvényes token' })
-       } else {
-         return response.status(error.status).send(error)
-       }
-     }
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response.status(authResult.error.status).send(authResult.error.message)
+    }
 
-    await User.accessTokens.delete(user, user.currentAccessToken.identifier)
+    await User.accessTokens.delete(authResult.user, authResult.user.currentAccessToken.identifier)
 
-    const token = await User.accessTokens.create(user!, ['*'], {
+    const token = await User.accessTokens.create(authResult.user!, ['*'], {
       expiresIn: '30 days',
     })
 
@@ -136,22 +118,71 @@ export default class UsersController {
   }
 
   async logout({ auth, response }: HttpContext) {
-    let user
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response.status(authResult.error.status).send(authResult.error.message)
+    }
+
+    await User.accessTokens.delete(authResult.user, authResult.user.currentAccessToken.identifier)
+
+    response.status(200).send('Sikeres kijelentkezés!')
+  }
+
+  async modifyAccount({ auth, request, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response.status(authResult.error.status).send(authResult.error.message)
+    }
+
     try {
-      user = await auth.authenticate()
-      if (!user) {
-        return response.status(401).send({ message: 'Nem érvényes token' })
+      const data = request.only(['firstName', 'lastName', 'password'])
+
+      await modifyAccountValidator.validate(data)
+
+      await authResult.user.merge(data).save()
+
+      response.status(200).send('Adatok sikeresen módosítva!')
+    } catch (error) {
+      response.status(422).send(error)
+    }
+  }
+
+  async deleteAccount({ auth, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response.status(authResult.error.status).send(authResult.error.message)
+    }
+
+    await authResult.user.delete()
+
+    response.status(200).send('Fiók sikeresen törölve!')
+  }
+
+  private async authenticateUser(auth: Authenticator<Authenticators>) {
+    let authResult: {
+      user:
+        | (User & {
+            currentAccessToken: AccessToken
+          })
+        | undefined
+      error: { status: number; message: string }
+    } = {
+      user: undefined,
+      error: { status: 401, message: 'Nem érvényes token' },
+    }
+    try {
+      authResult.user = await auth.authenticate()
+      if (!authResult.user) {
+        return authResult
       }
     } catch (error) {
       if (error.code === 'E_UNAUTHORIZED_ACCESS') {
-        return response.status(401).send({ message: 'Nem érvényes token' })
+        return authResult
       } else {
-        return response.status(error.status).send(error)
+        authResult.error = { status: error.status, message: error }
+        return authResult
       }
     }
-
-    await User.accessTokens.delete(user, user.currentAccessToken.identifier)
-
-    response.status(200).send('Sikeres kijelentkezés!')
+    return authResult
   }
 }
