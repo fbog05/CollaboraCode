@@ -3,14 +3,14 @@ import {
   afterCreate,
   BaseModel,
   beforeDelete,
+  belongsTo,
   column,
   hasMany,
   manyToMany,
 } from '@adonisjs/lucid/orm'
 import User from './user.js'
 import File from './file.js'
-import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
-import ProjectMember from './project_member.js'
+import type { BelongsTo, HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 
 export default class Project extends BaseModel {
   @column({ isPrimary: true })
@@ -28,8 +28,13 @@ export default class Project extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 
+  @belongsTo(() => User, {
+    foreignKey: 'ownerId',
+  })
+  declare owner: BelongsTo<typeof User>
+
   @hasMany(() => File)
-  declare file: HasMany<typeof File>
+  declare files: HasMany<typeof File>
 
   @manyToMany(() => User, {
     pivotTable: 'project_members',
@@ -38,15 +43,12 @@ export default class Project extends BaseModel {
 
   @afterCreate()
   static async createMemberTable(project: Project) {
-    await ProjectMember.create({
-      userId: project.ownerId,
-      projectId: project.id,
-    })
+    project.related('members').attach([project.ownerId])
   }
 
   @beforeDelete()
-  static async deleteMemberTable(project: Project) {
-    await File.query().where('project_id', project.id).delete()
-    await ProjectMember.query().where('project_id', project.id).delete()
+  static async deleteProject(project: Project) {
+    project.related('files').query().delete().exec()
+    project.related('members').detach()
   }
 }

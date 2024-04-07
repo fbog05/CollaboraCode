@@ -2,11 +2,10 @@ import { DateTime } from 'luxon'
 import { withAuthFinder } from '@adonisjs/auth'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
-import { afterDelete, BaseModel, beforeDelete, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeDelete, column, hasMany } from '@adonisjs/lucid/orm'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
-import type { ManyToMany } from '@adonisjs/lucid/types/relations'
+import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 import Project from './project.js'
-import ProjectMember from './project_member.js'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -38,7 +37,10 @@ export default class User extends compose(BaseModel, AuthFinder) {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 
-  declare project_members: ManyToMany<typeof Project>
+  @hasMany(() => Project)
+  declare projects: HasMany<typeof Project>
+
+  declare projectMembers: ManyToMany<typeof Project>
 
   static accessTokens = DbAccessTokensProvider.forModel(User)
 

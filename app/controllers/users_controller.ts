@@ -1,17 +1,42 @@
-/* eslint-disable prettier/prettier */
 import RegisterNotification from '#mails/register_notification'
 import User from '#models/user'
-import { loginValidator, modifyAccountValidator, registerValidator } from '#validators/user'
+import {
+  getUserInfoValidator,
+  loginValidator,
+  modifyAccountValidator,
+  registerValidator,
+} from '#validators/user'
 import { Authenticator } from '@adonisjs/auth'
 import { AccessToken } from '@adonisjs/auth/access_tokens'
 import { Authenticators } from '@adonisjs/auth/types'
 import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
+import mail from '@adonisjs/mail/services/main'
 
 export default class UsersController {
-  async getUsers({ response }: HttpContext) {
-    const users = await User.all()
-    response.status(200).json(users)
+  async getUserInfo({ auth, request, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response
+        .status(authResult.error.status)
+        .send('Be kell jelentkezni a fiók lekéréséhez!')
+    }
+
+    const data = request.all()
+
+    try {
+      await getUserInfoValidator.validate(data)
+
+      const user = await User.query()
+        .select('id', 'first_name', 'last_name', 'email', 'is_moderator')
+        .where('email', data['user_email'])
+        .first()
+
+      response.status(200).json(user)
+    } catch (error) {
+      response.status(422).send(error)
+      console.log(error)
+    }
   }
 
   async signUp({ request, response }: HttpContext) {
@@ -42,7 +67,7 @@ export default class UsersController {
       </div>
       `)
 
-      //await mail.send(email)
+      await mail.send(email)
 
       response.header('Content-type', 'application/json')
       const token = await User.accessTokens.create(user)
@@ -94,7 +119,7 @@ export default class UsersController {
     if (!authResult.user) {
       return response.status(authResult.error.status).send(authResult.error.message)
     }
-    
+
     return response
       .status(200)
       .json(
@@ -135,7 +160,7 @@ export default class UsersController {
     }
 
     try {
-      const data = request.only(['firstName', 'lastName', 'password'])
+      const data = request.only(['first_name', 'last_name', 'password'])
 
       await modifyAccountValidator.validate(data)
 

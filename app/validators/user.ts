@@ -1,9 +1,15 @@
 import vine, { SimpleMessagesProvider } from '@vinejs/vine'
 
+export const getUserInfoValidator = vine.compile(
+  vine.object({
+    user_email: vine.string().email().trim(),
+  })
+)
+
 export const registerValidator = vine.compile(
   vine.object({
-    firstName: vine.string().minLength(3).trim(),
-    lastName: vine.string().minLength(3).trim(),
+    first_name: vine.string().minLength(3).trim(),
+    last_name: vine.string().minLength(3).trim(),
     email: vine
       .string()
       .email()
@@ -29,8 +35,8 @@ export const loginValidator = vine.compile(
 
 export const modifyAccountValidator = vine.compile(
   vine.object({
-    firstName: vine.string().minLength(3).trim().optional(),
-    lastName: vine.string().minLength(3).trim().optional(),
+    first_name: vine.string().minLength(3).trim().optional(),
+    last_name: vine.string().minLength(3).trim().optional(),
     password: vine
       .string()
       .minLength(8)
@@ -39,13 +45,19 @@ export const modifyAccountValidator = vine.compile(
   })
 )
 
+getUserInfoValidator.messagesProvider = new SimpleMessagesProvider({
+  'user_email.required': 'Az email cím megadása kötelező',
+  'user_email.string': 'Az email címnek szövegnek kell lennie',
+  'user_email.email': 'Az email cím formátuma nem megfelelő',
+})
+
 registerValidator.messagesProvider = new SimpleMessagesProvider({
-  'firstName.required': 'A keresztnév megadása kötelező',
-  'firstName.string': 'A keresztnévnek szövegnek kell lennie',
-  'firstName.minLength': 'A keresztnévnek tartalmaznia kell minimum {{ min }} karaktert',
-  'lastName.required': 'A vezetéknév megadása kötelező',
-  'lastName.string': 'A vezetéknévnek szövegnek kell lennie',
-  'lastName.minLength': 'A vezetéknévnek tartalmaznia kell minimum {{ min }} karaktert',
+  'first_name.required': 'A keresztnév megadása kötelező',
+  'first_name.string': 'A keresztnévnek szövegnek kell lennie',
+  'first_name.minLength': 'A keresztnévnek tartalmaznia kell minimum {{ min }} karaktert',
+  'last_name.required': 'A vezetéknév megadása kötelező',
+  'last_name.string': 'A vezetéknévnek szövegnek kell lennie',
+  'last_name.minLength': 'A vezetéknévnek tartalmaznia kell minimum {{ min }} karaktert',
   'email.required': 'Az email cím megadása kötelező',
   'email.string': 'Az email címnek szövegnek kell lennie',
   'email.email': 'Az email cím formátuma nem megfelelő',
@@ -66,10 +78,10 @@ loginValidator.messagesProvider = new SimpleMessagesProvider({
 })
 
 modifyAccountValidator.messagesProvider = new SimpleMessagesProvider({
-  'firstName.string': 'A keresztnévnek szövegnek kell lennie',
-  'firstName.minLength': 'A keresztnévnek tartalmaznia kell minimum {{ min }} karaktert',
-  'lastName.string': 'A vezetéknévnek szövegnek kell lennie',
-  'lastName.minLength': 'A vezetéknévnek tartalmaznia kell minimum {{ min }} karaktert',
+  'first_name.string': 'A keresztnévnek szövegnek kell lennie',
+  'first_name.minLength': 'A keresztnévnek tartalmaznia kell minimum {{ min }} karaktert',
+  'last_name.string': 'A vezetéknévnek szövegnek kell lennie',
+  'last_name.minLength': 'A vezetéknévnek tartalmaznia kell minimum {{ min }} karaktert',
   'password.string': 'A jelszónak szövegnek kell lennie',
   'password.minLength': 'A jelszónak tartalmaznia kell minimum {{ min }} karaktert',
   'password.regex':

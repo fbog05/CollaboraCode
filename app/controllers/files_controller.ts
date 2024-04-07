@@ -1,15 +1,76 @@
 import File from '#models/file'
+import Project from '#models/project'
 import User from '#models/user'
-import { createFileValidator, modifyFileValidator, deleteFileValidator } from '#validators/file'
+import {
+  createFileValidator,
+  modifyFileValidator,
+  deleteFileValidator,
+  getProjectFilesValidator,
+  getFileInfoValidator,
+  editFileContentValidator,
+  getFileContentValidator,
+  getLastEditInfoValidator,
+} from '#validators/file'
 import { Authenticator } from '@adonisjs/auth'
 import { AccessToken } from '@adonisjs/auth/access_tokens'
 import { Authenticators } from '@adonisjs/auth/types'
 import { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 
 export default class FilesController {
-  async getFiles({ response }: HttpContext) {
-    const files = await File.all()
-    response.status(200).json(files)
+  async getFileInfo({ auth, request, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+
+    if (!authResult.user) {
+      return response
+        .status(authResult.error.status)
+        .send('Be kell jelentkezni a projekt lekéréséhez!')
+    }
+
+    const data = request.all()
+
+    try {
+      await getFileInfoValidator.validate(data)
+
+      const queryResult = await File.query()
+        .select('id', 'name', 'projectId')
+        .where('id', data['id'])
+        .preload('projects', (query) => query.select('id', 'name'))
+
+      const file = queryResult.map((item) => {
+        const { projectId, ...rest } = item.toJSON()
+        return rest
+      })
+
+      response.status(200).json(file)
+    } catch (error) {
+      response.status(422).send(error)
+      console.log(error)
+    }
+  }
+
+  async getProjectFiles({ auth, request, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response
+        .status(authResult.error.status)
+        .send('Be kell jelentkezni a fájlok lekéréséhez!')
+    }
+
+    const data = request.all()
+
+    try {
+      await getProjectFilesValidator.validate(data)
+
+      const project = await Project.findOrFail(data['project_id'])
+
+      const files = await project.related('files').query().select('id', 'name')
+
+      response.status(200).json(files)
+    } catch (error) {
+      response.status(422).send(error)
+      console.log(error)
+    }
   }
 
   async createFile({ auth, request, response }: HttpContext) {
@@ -25,7 +86,9 @@ export default class FilesController {
     try {
       await createFileValidator.validate(data)
 
-      const file = await File.create(data)
+      await File.create(data)
+
+      const file = await File.query().select('id', 'name').where('id', data['id']).first()
 
       response.status(201).json(file)
     } catch (error) {
@@ -51,7 +114,9 @@ export default class FilesController {
 
       await file.merge(data).save()
 
-      response.status(201).json(file)
+      const modifiedFile = await File.query().select('id', 'name').where('id', data['id']).first()
+
+      response.status(201).json(modifiedFile)
     } catch (error) {
       response.status(422).send(error)
       console.log(error)
@@ -65,16 +130,133 @@ export default class FilesController {
     }
 
     const data = request.all()
+
     try {
       await deleteFileValidator.validate(data)
 
       const file = await File.findOrFail(data.id)
 
+      const deletedFile = await File.query().select('id', 'name').where('id', data['id']).first()
+
       await file.delete()
+
+      response.status(200).json(deletedFile)
+    } catch (error) {
+      response.status(422).send(error)
+    }
+  }
+
+  async getFileContent({ auth, request, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response
+        .status(authResult.error.status)
+        .send('Be kell jelentkezni a fájl lekéréséhez!')
+    }
+
+    const data = request.all()
+
+    try {
+      await getFileContentValidator.validate(data)
+
+      const file = await File.findOrFail(data['id'])
+
+      const project = await Project.query()
+        .where('id', file.projectId)
+        .whereHas('members', (query) => {
+          query.where('users.id', authResult.user!.id)
+        })
+        .first()
+
+      if (!project) {
+        return response.status(403).send('Nem vagy a projekt tagja!')
+      }
+
+      response.status(200).json(file.content)
+    } catch (error) {
+      response.status(422).send(error)
+      console.log(error)
+    }
+  }
+
+  async editFileContent({ auth, request, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response
+        .status(authResult.error.status)
+        .send('Be kell jelentkezni a fájl módosításához!')
+    }
+
+    const data = request.all()
+
+    try {
+      await editFileContentValidator.validate(data)
+
+      const file = await File.findOrFail(data['id'])
+
+      const project = await Project.query()
+        .where('id', file.projectId)
+        .whereHas('members', (query) => {
+          query.where('users.id', authResult.user!.id)
+        })
+        .first()
+
+      if (!project) {
+        return response.status(403).send('Nem vagy a projekt tagja!')
+      }
+
+      await file.merge(data).save()
+
+      file.lastEditedUser = authResult.user!.firstName + ' ' + authResult.user!.lastName
+      file.lastEditedTime = DateTime.now().toISO()
+
+      const modifiedFile = await File.query()
+        .select('id', 'name', 'content')
+        .where('id', data['id'])
+        .first()
+
+      response.status(201).json(modifiedFile)
+    } catch (error) {
+      response.status(422).send(error)
+      console.log(error)
+    }
+  }
+
+  async getLastEditInfo({ auth, request, response }: HttpContext) {
+    const authResult = await this.authenticateUser(auth)
+    if (!authResult.user) {
+      return response
+        .status(authResult.error.status)
+        .send('Be kell jelentkezni a szerkesztési információk lekéréséhez!')
+    }
+
+    const data = request.all()
+
+    try {
+      await getLastEditInfoValidator.validate(data)
+
+      let file = await File.findOrFail(data['id'])
+
+      const project = await Project.query()
+        .where('id', file.projectId)
+        .whereHas('members', (query) => {
+          query.where('users.id', authResult.user!.id)
+        })
+        .first()
+
+      file = await File.query()
+        .select('id', 'name', 'lastEditedUser', 'lastEditedTime')
+        .where('id', data['id'])
+        .firstOrFail()
+
+      if (!project) {
+        return response.status(403).send('Nem vagy a projekt tagja!')
+      }
 
       response.status(200).json(file)
     } catch (error) {
       response.status(422).send(error)
+      console.log(error)
     }
   }
 
