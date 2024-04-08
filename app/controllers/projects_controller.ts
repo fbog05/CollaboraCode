@@ -95,7 +95,7 @@ export default class ProjectsController {
     }
 
     const name = request.input('name')
-    const data = { name, ownerId: authResult.user.id }
+    const data = { name, owner_id: authResult.user.id }
 
     try {
       await createProjectValidator.validate(data)
