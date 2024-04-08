@@ -14,15 +14,17 @@ import hash from '@adonisjs/core/services/hash'
 import mail from '@adonisjs/mail/services/main'
 
 export default class UsersController {
-  async getAccountInfo({ auth, request, response }: HttpContext) {
+  async getAccountInfo({ auth, response }: HttpContext) {
     const authResult = await this.authenticateUser(auth)
     if (!authResult.user) {
       return response
         .status(authResult.error.status)
-        .send('Be kell jelentkezni a fiók lekéréséhez!')
+        .send('Be kell jelentkezni a fiók adatok lekéréséhez!')
     }
 
-    const data = request.all()
+    const data = {
+      user_email: authResult.user.email,
+    }
 
     try {
       await getUserInfoValidator.validate(data)
