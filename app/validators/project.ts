@@ -14,7 +14,11 @@ export const getUserProjectsValidator = vine.compile(
 
 export const createProjectValidator = vine.compile(
   vine.object({
-    name: vine.string().minLength(3).trim(),
+    name: vine
+      .string()
+      .alphaNumeric({ allowSpaces: false, allowDashes: true, allowUnderscores: true })
+      .minLength(3)
+      .trim(),
     owner_id: vine.number(),
   })
 )
@@ -46,6 +50,7 @@ getUserProjectsValidator.messagesProvider = new SimpleMessagesProvider({
 createProjectValidator.messagesProvider = new SimpleMessagesProvider({
   'name.required': 'A név megadása kötelező',
   'name.string': 'A névnek szövegnek kell lennie',
+  'name.alpha': 'A névnek egyben kell lennie',
   'name.minLength': 'A névnek tartalmaznia kell minimum {{ min }} karaktert',
   'owner_id.required': 'A projekt tulajdonosának megadása kötelező',
   'owner_id.number': 'A projekt tulajdonosa azonosítójának számnak kell lennie',
