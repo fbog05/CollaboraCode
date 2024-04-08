@@ -18,6 +18,10 @@ export const createProjectValidator = vine.compile(
       .string()
       .alphaNumeric({ allowSpaces: false, allowDashes: true, allowUnderscores: true })
       .minLength(3)
+      .unique(async (db, value) => {
+        const project = await db.from('projects').where('name', value).first()
+        return !project
+      })
       .trim(),
     owner_id: vine.number(),
   })
@@ -51,6 +55,8 @@ createProjectValidator.messagesProvider = new SimpleMessagesProvider({
   'name.required': 'A név megadása kötelező',
   'name.string': 'A névnek szövegnek kell lennie',
   'name.alpha': 'A névnek egyben kell lennie',
+  'name.alphaNumeric': 'A név csak angol betűket, számokat, kötőjelet és alsóvonalat tartalmazhat',
+  'database.unique': 'Ilyen nevű projekt már létezik',
   'name.minLength': 'A névnek tartalmaznia kell minimum {{ min }} karaktert',
   'owner_id.required': 'A projekt tulajdonosának megadása kötelező',
   'owner_id.number': 'A projekt tulajdonosa azonosítójának számnak kell lennie',
