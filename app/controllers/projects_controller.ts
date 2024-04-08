@@ -33,12 +33,25 @@ export default class ProjectsController {
     try {
       await getProjectInfoValidator.validate(data)
 
-      const queryResult = await Project.query()
-        .where('projects.id', data['id'])
-        .preload('owner', (query) =>
-          query.select('id', 'first_name', 'last_name', 'email', 'is_moderator')
-        )
-        .select('id', 'name', 'ownerId')
+      let queryResult
+
+      if (data['id']) {
+        queryResult = await Project.query()
+          .where('projects.id', data['id'])
+          .preload('owner', (query) =>
+            query.select('id', 'first_name', 'last_name', 'email', 'is_moderator')
+          )
+          .select('id', 'name', 'ownerId')
+      } else if (data['name']) {
+        queryResult = await Project.query()
+          .where('projects.name', data['name'])
+          .preload('owner', (query) =>
+            query.select('id', 'first_name', 'last_name', 'email', 'is_moderator')
+          )
+          .select('id', 'name', 'ownerId')
+      } else {
+        throw new Error('Nincs megadva az id vagy a név!')
+      }
 
       const project = queryResult.map((item) => {
         const { ownerId, ...rest } = item.toJSON()

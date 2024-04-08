@@ -2,7 +2,8 @@ import vine, { SimpleMessagesProvider } from '@vinejs/vine'
 
 export const getProjectInfoValidator = vine.compile(
   vine.object({
-    id: vine.number(),
+    id: vine.number().optional(),
+    name: vine.string().minLength(3).trim().optional(),
   })
 )
 
@@ -43,6 +44,9 @@ export const deleteProjectValidator = vine.compile(
 getProjectInfoValidator.messagesProvider = new SimpleMessagesProvider({
   'id.required': 'Az azonosító megadása kötelező',
   'id.number': 'Az azonosítónak számnak kell lennie',
+  'name.required': 'A projekt nevének megadása kötelező',
+  'name.string': 'A projekt nevének szövegnek kell lennie',
+  'name.minLength': 'A projekt nevének tartalmaznia kell minimum {{ min }} karaktert',
 })
 
 getUserProjectsValidator.messagesProvider = new SimpleMessagesProvider({
