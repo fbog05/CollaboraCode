@@ -208,10 +208,12 @@ export default class FilesController {
         return response.status(403).send('Nem vagy a projekt tagja!')
       }
 
+      await file.merge(data).save()
+
       file.lastEditedUser = authResult.user!.firstName + ' ' + authResult.user!.lastName
       file.lastEditedTime = DateTime.now().toISO()
 
-      await file.merge(data).save()
+      await file.save()
 
       const modifiedFile = await File.query()
         .select('id', 'name', 'content')
