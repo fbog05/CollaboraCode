@@ -86,9 +86,12 @@ export default class FilesController {
     try {
       await createFileValidator.validate(data)
 
-      await File.create(data)
+      data.last_edited_user = authResult.user!.firstName + ' ' + authResult.user!.lastName
+      data.last_edited_time = DateTime.now()
 
-      const file = await File.query().select('id', 'name').where('id', data['id']).first()
+      const createdFile = await File.create(data)
+
+      const file = await File.query().select('id', 'name').where('id', createdFile.id).firstOrFail()
 
       response.status(201).json(file)
     } catch (error) {
@@ -205,10 +208,10 @@ export default class FilesController {
         return response.status(403).send('Nem vagy a projekt tagja!')
       }
 
-      await file.merge(data).save()
-
       file.lastEditedUser = authResult.user!.firstName + ' ' + authResult.user!.lastName
-      file.lastEditedTime = DateTime.now().toISO()
+      file.lastEditedTime = DateTime.now()
+
+      await file.merge(data).save()
 
       const modifiedFile = await File.query()
         .select('id', 'name', 'content')
