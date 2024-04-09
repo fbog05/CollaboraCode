@@ -87,7 +87,7 @@ export default class FilesController {
       await createFileValidator.validate(data)
 
       data.last_edited_user = authResult.user!.firstName + ' ' + authResult.user!.lastName
-      data.last_edited_time = DateTime.now()
+      data.last_edited_time = DateTime.now().toISO()
 
       const createdFile = await File.create(data)
 
@@ -209,7 +209,7 @@ export default class FilesController {
       }
 
       file.lastEditedUser = authResult.user!.firstName + ' ' + authResult.user!.lastName
-      file.lastEditedTime = DateTime.now()
+      file.lastEditedTime = DateTime.now().toISO()
 
       await file.merge(data).save()
 
