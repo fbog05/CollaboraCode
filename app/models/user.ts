@@ -37,7 +37,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 
-  @hasMany(() => Project)
+  @hasMany(() => Project, {
+    foreignKey: 'ownerId',
+  })
   declare projects: HasMany<typeof Project>
 
   declare projectMembers: ManyToMany<typeof Project>
@@ -45,7 +47,11 @@ export default class User extends compose(BaseModel, AuthFinder) {
   static accessTokens = DbAccessTokensProvider.forModel(User)
 
   @beforeDelete()
-  static async deleteMemberTable(user: User) {
-    await Project.query().where('owner_id', user.id).delete()
+  static async deleteUser(user: User) {
+    const projects = await user.related('projects').query()
+
+    for (const project of projects) {
+      Project.deleteProject(project)
+    }
   }
 }
