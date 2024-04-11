@@ -173,7 +173,10 @@ export default class FilesController {
     try {
       await getFileContentValidator.validate(data)
 
-      const file = await File.findOrFail(data['id'])
+      let file = await File.query()
+        .select('content', 'project_id')
+        .where('id', data['id'])
+        .firstOrFail()
 
       const project = await Project.query()
         .where('id', file.projectId)
@@ -186,7 +189,9 @@ export default class FilesController {
         return response.status(403).send('Nem vagy a projekt tagja!')
       }
 
-      response.status(200).json(file.content)
+      const { projectId, ...fileResult } = file.toJSON()
+
+      response.status(200).send(fileResult)
     } catch (error) {
       response.status(422).send(error)
       console.log(error)
@@ -226,12 +231,9 @@ export default class FilesController {
 
       await file.save()
 
-      const modifiedFile = await File.query()
-        .select('id', 'name', 'content')
-        .where('id', data['id'])
-        .first()
+      const modifiedFile = await File.query().select('content').where('id', data['id']).first()
 
-      response.status(201).json(modifiedFile)
+      response.status(201).send(modifiedFile)
     } catch (error) {
       response.status(422).send(error)
       console.log(error)

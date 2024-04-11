@@ -124,7 +124,7 @@ export default class UsersController {
 
     return response
       .status(200)
-      .json(
+      .send(
         `A felhasználó bejelentkezve marad (UTC): ${authResult.user.currentAccessToken.expiresAt?.toLocaleString()}-ig`
       )
   }
