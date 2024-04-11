@@ -2,7 +2,8 @@ import vine, { SimpleMessagesProvider } from '@vinejs/vine'
 
 export const getFileInfoValidator = vine.compile(
   vine.object({
-    id: vine.number(),
+    id: vine.number().optional(),
+    name: vine.string().optional(),
   })
 )
 
@@ -52,8 +53,8 @@ export const getLastEditInfoValidator = vine.compile(
 )
 
 getFileInfoValidator.messagesProvider = new SimpleMessagesProvider({
-  'id.required': 'Az azonosító megadása kötelező',
   'id.number': 'Az azonosítónak számnak kell lennie',
+  'name.string': 'A névnek szövegnek kell lennie',
 })
 
 getProjectFilesValidator.messagesProvider = new SimpleMessagesProvider({
