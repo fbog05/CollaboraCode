@@ -32,10 +32,21 @@ export default class FilesController {
     try {
       await getFileInfoValidator.validate(data)
 
-      const queryResult = await File.query()
-        .select('id', 'name', 'projectId')
-        .where('id', data['id'])
-        .preload('projects', (query) => query.select('id', 'name'))
+      let queryResult
+
+      if (data['id']) {
+        queryResult = await File.query()
+          .select('id', 'name', 'projectId')
+          .where('id', data['id'])
+          .preload('projects', (query) => query.select('id', 'name'))
+      } else if (data['name']) {
+        queryResult = await File.query()
+          .select('id', 'name', 'projectId')
+          .where('name', data['name'])
+          .preload('projects', (query) => query.select('id', 'name'))
+      } else {
+        throw new Error('Nincs megadva az id vagy a név!')
+      }
 
       const file = queryResult.map((item) => {
         const { projectId, ...rest } = item.toJSON()
